@@ -185,6 +185,24 @@
     color:var(--gold);
     margin-top:3px;
   }
+  .block-memo{
+    display:block;
+    width:100%;
+    margin-top:8px;
+    padding:6px 8px;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:13px;
+    color:var(--ink);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:3px;
+    resize:vertical;
+    line-height:1.6;
+  }
+  .block-memo::placeholder{
+    color:var(--ink-soft);
+    opacity:0.6;
+  }
   .footer{
     margin-top:26px;
     text-align:center;
@@ -337,12 +355,12 @@ function buildEveningBlocks(homeTime){
     {id:"reflect", start:homeTime, end:toHHMM(reflectEnd), label:"その日の学びの振り返り"}
   ];
   if(reflectEnd < mealStart){
-    blocks.push({id:"free", start:toHHMM(reflectEnd), end:"18:30", label:"映画鑑賞・その他インプット・おじさんの右腕", note:"余白時間"});
+    blocks.push({id:"free", start:toHHMM(reflectEnd), end:"18:30", label:"映画鑑賞・その他インプット・おじさんの右腕", note:"余白時間", memo:true});
   }
   return blocks.concat(FIXED_EVENING_TAIL);
 }
 
-let state = { homeTime:"17:00", checked:{} };
+let state = { homeTime:"17:00", checked:{}, memos:{} };
 
 async function loadState(){
   const raw = await store.get("routine:"+todayStr());
@@ -351,6 +369,7 @@ async function loadState(){
       const parsed = JSON.parse(raw);
       state.homeTime = parsed.homeTime || "17:00";
       state.checked = parsed.checked || {};
+      state.memos = parsed.memos || {};
     }catch(e){}
   }
 }
@@ -403,6 +422,19 @@ function renderGroup(containerId, blocks){
       note.className = "block-note";
       note.textContent = b.note;
       main.appendChild(note);
+    }
+    if(b.memo){
+      const memo = document.createElement("textarea");
+      memo.className = "block-memo";
+      memo.rows = 2;
+      memo.placeholder = "実際にやったことをメモ";
+      memo.value = state.memos[b.id] || "";
+      memo.addEventListener("click", e => e.stopPropagation());
+      memo.addEventListener("input", async (e) => {
+        state.memos[b.id] = e.target.value;
+        await saveState();
+      });
+      main.appendChild(memo);
     }
     row.appendChild(circle);
     row.appendChild(main);
@@ -470,7 +502,10 @@ async function init(){
   renderAll();
   await checkCompletion();
 
-  setInterval(renderAll, 30000);
+  setInterval(() => {
+    if(document.activeElement && document.activeElement.classList.contains("block-memo")) return;
+    renderAll();
+  }, 30000);
 }
 
 init();
