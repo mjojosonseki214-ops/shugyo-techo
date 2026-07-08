@@ -2,8 +2,16 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>修行手帳 - 一日ルーティン</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#EFEAE0">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="修行手帳">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   :root{
     --paper:#EFEAE0;
@@ -1096,6 +1104,12 @@ async function init(){
 }
 
 init();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
