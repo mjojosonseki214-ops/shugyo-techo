@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>修行手帳 - 一日ルーティン</title>
+<style>
+  :root{
+    --paper:#EFEAE0;
+    --paper-card:#F7F4EC;
+    --ink:#1C1B1A;
+    --ink-soft:#5B5750;
+    --stamp:#C43428;
+    --stamp-soft:#E7B9B3;
+    --gold:#B98B2E;
+    --line:#D8D2C4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:520px;
+    margin:0 auto;
+    padding:28px 18px 60px;
+  }
+  .header{
+    text-align:center;
+    margin-bottom:6px;
+  }
+  .header .eyebrow{
+    font-size:12px;
+    letter-spacing:0.3em;
+    color:var(--ink-soft);
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .header h1{
+    font-size:26px;
+    font-weight:normal;
+    margin:6px 0 2px;
+    letter-spacing:0.05em;
+  }
+  .header .date{
+    font-size:13px;
+    color:var(--ink-soft);
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .divider{
+    border:none;
+    border-top:1px dashed var(--line);
+    margin:18px 0 20px;
+  }
+  .kakugen{
+    text-align:center;
+    margin:20px 0 4px;
+    padding:18px 16px;
+    background:var(--paper-card);
+    border-top:1px solid var(--gold);
+    border-bottom:1px solid var(--gold);
+    cursor:pointer;
+  }
+  .kakugen .kakugen-text{
+    font-size:18px;
+    letter-spacing:0.08em;
+    line-height:1.7;
+  }
+  .kakugen .kakugen-source{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:10px;
+    color:var(--ink-soft);
+    letter-spacing:0.2em;
+    margin-top:8px;
+  }
+  .scold{
+    display:none;
+    margin:16px 0 4px;
+    padding:16px;
+    background:#3A1310;
+    border-left:4px solid var(--stamp);
+    color:#F2DDD9;
+  }
+  .scold.active{ display:block; }
+  .scold .scold-text{
+    font-size:16px;
+    line-height:1.8;
+    letter-spacing:0.05em;
+  }
+  .scold .scold-detail{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:11px;
+    color:var(--stamp-soft);
+    margin-top:10px;
+  }
+  .home-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px 14px;
+    margin-bottom:22px;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .home-row label{
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .home-row input[type=time]{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:15px;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:3px;
+    padding:4px 6px;
+    color:var(--ink);
+  }
+  .section-title{
+    font-size:12px;
+    color:var(--ink-soft);
+    letter-spacing:0.2em;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    margin:22px 0 8px 2px;
+  }
+  .block{
+    position:relative;
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:12px 10px 12px 4px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    transition:background 0.15s;
+  }
+  .block:hover{ background:rgba(0,0,0,0.02); }
+  .block.now{
+    border-left:3px solid var(--stamp);
+    padding-left:8px;
+    background:rgba(196,52,40,0.05);
+  }
+  .block.marker{ cursor:default; }
+  .stamp-circle{
+    flex:none;
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    color:transparent;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    margin-top:2px;
+  }
+  .stamp-circle.checked{
+    border-color:var(--stamp);
+    color:var(--stamp);
+    transform:rotate(-8deg);
+    font-weight:bold;
+  }
+  .stamp-circle.marker{
+    border:none;
+    font-size:10px;
+    color:var(--gold);
+  }
+  .block-main{ flex:1; }
+  .block-time{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:0.03em;
+  }
+  .block-label{
+    font-size:16px;
+    margin-top:2px;
+  }
+  .block-note{
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:11px;
+    color:var(--gold);
+    margin-top:3px;
+  }
+  .footer{
+    margin-top:26px;
+    text-align:center;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .stamp-count{
+    display:inline-block;
+    border:1px solid var(--gold);
+    color:var(--gold);
+    border-radius:20px;
+    padding:6px 18px;
+    font-size:13px;
+  }
+  .reset-link{
+    display:block;
+    margin-top:14px;
+    font-size:11px;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="eyebrow">FUKUOKA APPRENTICESHIP LOG</div>
+    <h1>修行手帳</h1>
+    <div class="date" id="today-label"></div>
+  </div>
+
+  <div class="kakugen" id="kakugen" title="タップで次の格言">
+    <div class="kakugen-text" id="kakugen-text"></div>
+    <div class="kakugen-source">RUCCOLO'S WORDS</div>
+  </div>
+
+  <div class="scold" id="scold">
+    <div class="scold-text" id="scold-text"></div>
+    <div class="scold-detail" id="scold-detail"></div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="home-row">
+    <label for="home-time">帰宅時刻</label>
+    <input type="time" id="home-time" value="17:00">
+  </div>
+
+  <div class="section-title">午前 - 自由時間</div>
+  <div id="morning-blocks"></div>
+
+  <div class="section-title">日中 - ルッコローからのインプット</div>
+  <div id="midday-blocks"></div>
+
+  <div class="section-title">夕方〜夜 - 自由時間</div>
+  <div id="evening-blocks"></div>
+
+  <div class="footer">
+    <span class="stamp-count" id="stamp-count">達成日数: -</span>
+    <button class="reset-link" id="reset-today">今日のチェックをリセット</button>
+  </div>
+</div>
+
+<script>
+const KAKUGEN = [
+  "準備がすべて",
+  "相手視点で考える",
+  "本質で考える",
+  "価値を上げる",
+  "他人の人生を勝手に背負う",
+  "一挙手一投足に意識を通す",
+  "どれだけ楽しい時間を作れるか",
+  "ものを売るのではなく、必要な人に必要なモノを「届ける」"
+];
+let kakugenIndex = Math.floor(Math.random() * KAKUGEN.length);
+function showKakugen(){
+  document.getElementById("kakugen-text").textContent = KAKUGEN[kakugenIndex];
+}
+
+const SCOLD = [
+  "今、変わろうとしなかったら一生変われないよ？",
+  "今自分のすべての弱みに直面している。そのままでいい要素はほぼない。",
+  "こんな状況でもまだ逃げ続けるのか？",
+  "自分の一挙手一投足を疑え。今のままで変われると思うなよ。",
+  "周りの人にしてもらっていることを考えろ。",
+  "今のお前はただの邪魔だ。",
+  "早く成功して、周りに恩返しできるようにやるべきことをやるしかない。"
+];
+
+const store = {
+  async get(k){
+    if(window.storage){
+      try{ const r = await window.storage.get(k); return r ? r.value : null; }
+      catch(e){ return null; }
+    }
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  },
+  async set(k,v){
+    if(window.storage){
+      try{ await window.storage.set(k,v); return; }catch(e){}
+    }
+    try{ localStorage.setItem(k,v); }catch(e){}
+  }
+};
+
+const FIXED_MORNING = [
+  {id:"wake", start:"06:00", end:"06:00", label:"起床", marker:true},
+  {id:"run", start:"06:00", end:"06:20", label:"ランニング"},
+  {id:"train", start:"06:20", end:"06:30", label:"筋トレ"},
+  {id:"shower_am", start:"06:30", end:"07:00", label:"シャワー・身支度"},
+  {id:"sim", start:"07:00", end:"09:00", label:"経営者対話シミュレーション"}
+];
+const FIXED_MIDDAY = [
+  {id:"input", start:"09:00", end:"17:00", label:"ルッコローからのインプット", note:"店舗視察 → 自分の売上仮説をぶつける"}
+];
+const FIXED_EVENING_TAIL = [
+  {id:"meal", start:"18:30", end:"20:00", label:"食事・シャワー"},
+  {id:"photo", start:"20:00", end:"20:30", label:"写真・動画の振り返り"},
+  {id:"migite", start:"20:30", end:"21:30", label:"おじさんの右腕"},
+  {id:"projects", start:"21:30", end:"22:30", label:"BRÜCKE / SPECK / にくだ"},
+  {id:"sleep", start:"23:00", end:"23:00", label:"就寝", marker:true}
+];
+
+function toMin(hhmm){
+  const [h,m] = hhmm.split(":").map(Number);
+  return h*60+m;
+}
+function toHHMM(min){
+  min = ((min%1440)+1440)%1440;
+  const h = Math.floor(min/60), m = min%60;
+  return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+}
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function nowMin(){
+  const d = new Date();
+  return d.getHours()*60+d.getMinutes();
+}
+
+function buildEveningBlocks(homeTime){
+  const home = toMin(homeTime);
+  const reflectEnd = home + 90;
+  const mealStart = toMin("18:30");
+  const blocks = [
+    {id:"reflect", start:homeTime, end:toHHMM(reflectEnd), label:"その日の学びの振り返り"}
+  ];
+  if(reflectEnd < mealStart){
+    blocks.push({id:"free", start:toHHMM(reflectEnd), end:"18:30", label:"映画鑑賞・その他インプット・おじさんの右腕", note:"余白時間"});
+  }
+  return blocks.concat(FIXED_EVENING_TAIL);
+}
+
+let state = { homeTime:"17:00", checked:{} };
+
+async function loadState(){
+  const raw = await store.get("routine:"+todayStr());
+  if(raw){
+    try{
+      const parsed = JSON.parse(raw);
+      state.homeTime = parsed.homeTime || "17:00";
+      state.checked = parsed.checked || {};
+    }catch(e){}
+  }
+}
+async function saveState(){
+  await store.set("routine:"+todayStr(), JSON.stringify(state));
+  checkCompletion();
+}
+async function checkCompletion(){
+  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+    .filter(b => !b.marker);
+  const allChecked = allBlocks.every(b => state.checked[b.id]);
+  let dates = [];
+  const raw = await store.get("completed-dates");
+  if(raw){ try{ dates = JSON.parse(raw); }catch(e){} }
+  const t = todayStr();
+  const has = dates.includes(t);
+  if(allChecked && !has){
+    dates.push(t);
+    await store.set("completed-dates", JSON.stringify(dates));
+  } else if(!allChecked && has){
+    dates = dates.filter(d => d !== t);
+    await store.set("completed-dates", JSON.stringify(dates));
+  }
+  document.getElementById("stamp-count").textContent = "達成日数: " + dates.length;
+}
+
+function renderGroup(containerId, blocks){
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  const now = nowMin();
+  blocks.forEach(b => {
+    const row = document.createElement("div");
+    const isNow = !b.marker && now >= toMin(b.start) && now < toMin(b.end===b.start ? toHHMM(toMin(b.end)+1) : b.end);
+    row.className = "block" + (isNow ? " now" : "") + (b.marker ? " marker" : "");
+    const circle = document.createElement("div");
+    circle.className = "stamp-circle" + (b.marker ? " marker" : "") + (state.checked[b.id] ? " checked" : "");
+    circle.textContent = b.marker ? "・" : (state.checked[b.id] ? "済" : "");
+    const main = document.createElement("div");
+    main.className = "block-main";
+    const time = document.createElement("div");
+    time.className = "block-time";
+    time.textContent = b.start === b.end ? b.start : (b.start + " - " + b.end);
+    const label = document.createElement("div");
+    label.className = "block-label";
+    label.textContent = b.label;
+    main.appendChild(time);
+    main.appendChild(label);
+    if(b.note){
+      const note = document.createElement("div");
+      note.className = "block-note";
+      note.textContent = b.note;
+      main.appendChild(note);
+    }
+    row.appendChild(circle);
+    row.appendChild(main);
+    if(!b.marker){
+      row.addEventListener("click", async () => {
+        state.checked[b.id] = !state.checked[b.id];
+        await saveState();
+        renderAll();
+      });
+    }
+    container.appendChild(row);
+  });
+}
+
+function updateScold(){
+  const now = nowMin();
+  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+    .filter(b => !b.marker);
+  const overdue = allBlocks.filter(b => toMin(b.end) <= now && !state.checked[b.id]);
+  const el = document.getElementById("scold");
+  if(overdue.length > 0){
+    el.classList.add("active");
+    document.getElementById("scold-text").textContent =
+      SCOLD[Math.floor(Math.random() * SCOLD.length)];
+    document.getElementById("scold-detail").textContent =
+      "未消化: " + overdue.map(b => b.label).join(" / ");
+  } else {
+    el.classList.remove("active");
+  }
+}
+
+function renderAll(){
+  renderGroup("morning-blocks", FIXED_MORNING);
+  renderGroup("midday-blocks", FIXED_MIDDAY);
+  renderGroup("evening-blocks", buildEveningBlocks(state.homeTime));
+  updateScold();
+}
+
+async function init(){
+  const d = new Date();
+  document.getElementById("today-label").textContent =
+    d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日";
+
+  showKakugen();
+  document.getElementById("kakugen").addEventListener("click", () => {
+    kakugenIndex = (kakugenIndex + 1) % KAKUGEN.length;
+    showKakugen();
+  });
+
+  await loadState();
+  document.getElementById("home-time").value = state.homeTime;
+
+  document.getElementById("home-time").addEventListener("change", async (e) => {
+    state.homeTime = e.target.value;
+    await saveState();
+    renderAll();
+  });
+
+  document.getElementById("reset-today").addEventListener("click", async () => {
+    state.checked = {};
+    await saveState();
+    renderAll();
+  });
+
+  renderAll();
+  await checkCompletion();
+
+  setInterval(renderAll, 30000);
+}
+
+init();
+</script>
+</body>
+</html>
