@@ -398,6 +398,37 @@
     user-select:none;
     -webkit-user-select:none;
   }
+  .block-time.editable{ cursor:pointer; }
+  .dur-pen{
+    color:var(--gold);
+    margin-left:6px;
+  }
+  .dur-editor{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-left:6px;
+  }
+  .dur-btn{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:4px 10px;
+    font-size:12px;
+    color:var(--ink);
+    cursor:pointer;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .dur-btn.ok{
+    border-color:var(--stamp);
+    color:var(--stamp);
+  }
+  .dur-val{
+    font-size:13px;
+    color:var(--stamp);
+    min-width:44px;
+    text-align:center;
+  }
 </style>
 </head>
 <body>
@@ -531,12 +562,17 @@ function orderedItems(items, orderIds){
   items.forEach(i => { if(out.indexOf(i) < 0) out.push(i); });
   return out;
 }
+function durOf(id, fallback){
+  const v = state.durs && state.durs[id];
+  return (typeof v === "number" && v >= 5) ? v : fallback;
+}
 function chainItems(items, startMin, group){
   let t = startMin;
   return items.map(i => {
-    const b = {id:i.id, label:i.label, start:toHHMM(t), end:toHHMM(t + i.dur), group:group};
+    const dur = durOf(i.id, i.dur);
+    const b = {id:i.id, label:i.label, start:toHHMM(t), end:toHHMM(t + dur), group:group, dur:dur, durEditable:true};
     if(i.note) b.note = i.note;
-    t += i.dur;
+    t += dur;
     return b;
   });
 }
@@ -565,10 +601,11 @@ function nowMin(){
 
 function buildEveningBlocks(homeTime){
   const home = toMin(homeTime);
-  const reflectEnd = home + 90;
+  const reflectDur = durOf("reflect", 90);
+  const reflectEnd = home + reflectDur;
   const mealStart = toMin("18:30");
   const blocks = [
-    {id:"reflect", start:homeTime, end:toHHMM(reflectEnd), label:"その日の学びの振り返り"}
+    {id:"reflect", start:homeTime, end:toHHMM(reflectEnd), label:"その日の学びの振り返り", dur:reflectDur, durEditable:true}
   ];
   if(reflectEnd < mealStart){
     blocks.push({id:"free", start:toHHMM(reflectEnd), end:"18:30", label:"映画鑑賞・その他インプット・おじさんの右腕", note:"余白時間", memo:true});
@@ -577,7 +614,7 @@ function buildEveningBlocks(homeTime){
   return blocks.concat(chainItems(tail, toMin("18:30"), "evening")).concat([SLEEP]);
 }
 
-let state = { homeTime:"17:00", checked:{}, memos:{}, order:{} };
+let state = { homeTime:"17:00", checked:{}, memos:{}, order:{}, durs:{} };
 
 async function loadState(){
   const raw = await store.get("routine:"+todayStr());
@@ -588,6 +625,7 @@ async function loadState(){
       state.checked = parsed.checked || {};
       state.memos = parsed.memos || {};
       state.order = parsed.order || {};
+      state.durs = parsed.durs || {};
     }catch(e){}
   }
 }
@@ -630,6 +668,39 @@ function renderGroup(containerId, blocks){
     const time = document.createElement("div");
     time.className = "block-time";
     time.textContent = b.start === b.end ? b.start : (b.start + " - " + b.end);
+    if(b.durEditable){
+      time.classList.add("editable");
+      if(editingDurId === b.id){
+        const ed = document.createElement("span");
+        ed.className = "dur-editor";
+        const mkBtn = (txt, cls, fn) => {
+          const btn = document.createElement("button");
+          btn.className = "dur-btn" + (cls ? " " + cls : "");
+          btn.textContent = txt;
+          btn.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+          return btn;
+        };
+        const val = document.createElement("span");
+        val.className = "dur-val";
+        val.textContent = b.dur + "分";
+        ed.appendChild(mkBtn("−5", "", () => setDur(b.id, b.dur - 5)));
+        ed.appendChild(val);
+        ed.appendChild(mkBtn("＋5", "", () => setDur(b.id, b.dur + 5)));
+        ed.appendChild(mkBtn("完了", "ok", () => { editingDurId = null; renderAll(); }));
+        time.appendChild(ed);
+      } else {
+        const pen = document.createElement("span");
+        pen.className = "dur-pen";
+        pen.textContent = "✎ " + b.dur + "分";
+        time.appendChild(pen);
+        time.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if(suppressClick) return;
+          editingDurId = b.id;
+          renderAll();
+        });
+      }
+    }
     const label = document.createElement("div");
     label.className = "block-label";
     label.textContent = b.label;
@@ -670,6 +741,16 @@ function renderGroup(containerId, blocks){
     }
     container.appendChild(row);
   });
+}
+
+/* ---- 所要時間の変更 ---- */
+let editingDurId = null;
+
+async function setDur(id, min){
+  min = Math.max(5, Math.min(480, min));
+  state.durs[id] = min;
+  await saveState();
+  renderAll();
 }
 
 /* ---- 並び替え(PC: ドラッグ / スマホ: 長押し) ---- */
