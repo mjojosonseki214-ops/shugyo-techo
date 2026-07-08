@@ -364,6 +364,40 @@
     border-top:1px dashed var(--line);
     line-height:1.7;
   }
+  .block.draggable{
+    padding-right:36px;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+  }
+  .drag-handle{
+    position:absolute;
+    right:4px;
+    top:50%;
+    transform:translateY(-50%);
+    color:var(--line);
+    font-size:15px;
+    padding:8px 6px;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .block.dragging{
+    opacity:0.35;
+    background:rgba(196,52,40,0.06);
+  }
+  .block-ghost{
+    position:fixed;
+    z-index:99;
+    pointer-events:none;
+    background:var(--paper-card);
+    box-shadow:0 6px 18px rgba(0,0,0,0.18);
+    border:1px solid var(--gold);
+    border-radius:4px;
+    opacity:0.95;
+  }
+  body.drag-active{
+    user-select:none;
+    -webkit-user-select:none;
+  }
 </style>
 </head>
 <body>
@@ -471,23 +505,45 @@ const store = {
   }
 };
 
-const FIXED_MORNING = [
-  {id:"wake", start:"06:00", end:"06:00", label:"起床", marker:true},
-  {id:"run", start:"06:00", end:"06:20", label:"ランニング"},
-  {id:"train", start:"06:20", end:"06:30", label:"筋トレ"},
-  {id:"shower_am", start:"06:30", end:"07:00", label:"シャワー・身支度"},
-  {id:"sim", start:"07:00", end:"09:00", label:"経営者対話シミュレーション"}
+const WAKE = {id:"wake", start:"06:00", end:"06:00", label:"起床", marker:true};
+const SLEEP = {id:"sleep", start:"23:00", end:"23:00", label:"就寝", marker:true};
+const MORNING_ITEMS = [
+  {id:"run", dur:20, label:"ランニング"},
+  {id:"train", dur:10, label:"筋トレ"},
+  {id:"shower_am", dur:30, label:"シャワー・身支度"},
+  {id:"sim", dur:120, label:"経営者対話シミュレーション"}
+];
+const EVENING_ITEMS = [
+  {id:"meal", dur:90, label:"食事・シャワー"},
+  {id:"photo", dur:30, label:"写真・動画の振り返り"},
+  {id:"migite", dur:60, label:"おじさんの右腕"},
+  {id:"projects", dur:60, label:"BRÜCKE / SPECK / にくだ"}
 ];
 const FIXED_MIDDAY = [
   {id:"input", start:"09:00", end:"17:00", label:"ルッコローからのインプット", note:"店舗視察 → 自分の売上仮説をぶつける"}
 ];
-const FIXED_EVENING_TAIL = [
-  {id:"meal", start:"18:30", end:"20:00", label:"食事・シャワー"},
-  {id:"photo", start:"20:00", end:"20:30", label:"写真・動画の振り返り"},
-  {id:"migite", start:"20:30", end:"21:30", label:"おじさんの右腕"},
-  {id:"projects", start:"21:30", end:"22:30", label:"BRÜCKE / SPECK / にくだ"},
-  {id:"sleep", start:"23:00", end:"23:00", label:"就寝", marker:true}
-];
+
+function orderedItems(items, orderIds){
+  if(!orderIds) return items;
+  const map = {};
+  items.forEach(i => map[i.id] = i);
+  const out = orderIds.map(id => map[id]).filter(Boolean);
+  items.forEach(i => { if(out.indexOf(i) < 0) out.push(i); });
+  return out;
+}
+function chainItems(items, startMin, group){
+  let t = startMin;
+  return items.map(i => {
+    const b = {id:i.id, label:i.label, start:toHHMM(t), end:toHHMM(t + i.dur), group:group};
+    if(i.note) b.note = i.note;
+    t += i.dur;
+    return b;
+  });
+}
+function buildMorningBlocks(){
+  const items = orderedItems(MORNING_ITEMS, state.order && state.order.morning);
+  return [WAKE].concat(chainItems(items, 6*60, "morning"));
+}
 
 function toMin(hhmm){
   const [h,m] = hhmm.split(":").map(Number);
@@ -517,10 +573,11 @@ function buildEveningBlocks(homeTime){
   if(reflectEnd < mealStart){
     blocks.push({id:"free", start:toHHMM(reflectEnd), end:"18:30", label:"映画鑑賞・その他インプット・おじさんの右腕", note:"余白時間", memo:true});
   }
-  return blocks.concat(FIXED_EVENING_TAIL);
+  const tail = orderedItems(EVENING_ITEMS, state.order && state.order.evening);
+  return blocks.concat(chainItems(tail, toMin("18:30"), "evening")).concat([SLEEP]);
 }
 
-let state = { homeTime:"17:00", checked:{}, memos:{} };
+let state = { homeTime:"17:00", checked:{}, memos:{}, order:{} };
 
 async function loadState(){
   const raw = await store.get("routine:"+todayStr());
@@ -530,6 +587,7 @@ async function loadState(){
       state.homeTime = parsed.homeTime || "17:00";
       state.checked = parsed.checked || {};
       state.memos = parsed.memos || {};
+      state.order = parsed.order || {};
     }catch(e){}
   }
 }
@@ -538,7 +596,7 @@ async function saveState(){
   checkCompletion();
 }
 async function checkCompletion(){
-  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+  const allBlocks = [...buildMorningBlocks(), ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
     .filter(b => !b.marker);
   const allChecked = allBlocks.every(b => state.checked[b.id]);
   let dates = [];
@@ -600,18 +658,137 @@ function renderGroup(containerId, blocks){
     row.appendChild(main);
     if(!b.marker){
       row.addEventListener("click", async () => {
+        if(suppressClick) return;
         state.checked[b.id] = !state.checked[b.id];
         await saveState();
         renderAll();
       });
     }
+    if(b.group){
+      row.dataset.id = b.id;
+      attachDrag(row, b, container);
+    }
     container.appendChild(row);
   });
 }
 
+/* ---- 並び替え(PC: ドラッグ / スマホ: 長押し) ---- */
+let suppressClick = false;
+let drag = null;
+
+function startDrag(row, b, container, y){
+  const rect = row.getBoundingClientRect();
+  const ghost = row.cloneNode(true);
+  ghost.className = "block block-ghost";
+  ghost.style.width = rect.width + "px";
+  ghost.style.left = rect.left + "px";
+  ghost.style.top = rect.top + "px";
+  document.body.appendChild(ghost);
+  document.body.classList.add("drag-active");
+  row.classList.add("dragging");
+  drag = {row:row, group:b.group, container:container, ghost:ghost, offsetY:y - rect.top};
+  if(navigator.vibrate){ try{ navigator.vibrate(30); }catch(e){} }
+}
+
+function onDragMove(y){
+  if(!drag) return;
+  drag.ghost.style.top = (y - drag.offsetY) + "px";
+  const rows = [...drag.container.querySelectorAll(".block.draggable")].filter(r => r !== drag.row);
+  let target = null;
+  for(const r of rows){
+    const rc = r.getBoundingClientRect();
+    if(y < rc.top + rc.height / 2){ target = r; break; }
+  }
+  if(target){
+    if(target !== drag.row.nextSibling) drag.container.insertBefore(drag.row, target);
+  } else if(rows.length){
+    const last = rows[rows.length - 1];
+    if(drag.row !== last.nextSibling && drag.row !== last) drag.container.insertBefore(drag.row, last.nextSibling);
+  }
+}
+
+async function endDrag(){
+  if(!drag) return;
+  const ids = [...drag.container.querySelectorAll(".block.draggable")].map(r => r.dataset.id);
+  const group = drag.group;
+  drag.ghost.remove();
+  drag.row.classList.remove("dragging");
+  document.body.classList.remove("drag-active");
+  drag = null;
+  suppressClick = true;
+  setTimeout(() => { suppressClick = false; }, 150);
+  state.order[group] = ids;
+  await saveState();
+  renderAll();
+}
+
+function attachDrag(row, b, container){
+  row.classList.add("draggable");
+  const handle = document.createElement("div");
+  handle.className = "drag-handle";
+  handle.textContent = "≡";
+  row.appendChild(handle);
+
+  row.addEventListener("mousedown", (e) => {
+    if(e.button !== 0 || e.target.tagName === "TEXTAREA") return;
+    const sx = e.clientX, sy = e.clientY;
+    let started = false;
+    const move = (ev) => {
+      if(!started && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 6){
+        started = true;
+        startDrag(row, b, container, ev.clientY);
+      }
+      if(started) onDragMove(ev.clientY);
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      if(started) endDrag();
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  });
+
+  row.addEventListener("touchstart", (e) => {
+    if(e.target.tagName === "TEXTAREA") return;
+    const t0 = e.touches[0];
+    const sx = t0.clientX, sy = t0.clientY;
+    let started = false;
+    const timer = setTimeout(() => {
+      started = true;
+      startDrag(row, b, container, sy);
+    }, 400);
+    const move = (ev) => {
+      const t = ev.touches[0];
+      if(!started){
+        if(Math.abs(t.clientX - sx) + Math.abs(t.clientY - sy) > 10){
+          clearTimeout(timer);
+          cleanup();
+        }
+        return;
+      }
+      ev.preventDefault();
+      onDragMove(t.clientY);
+    };
+    const end = () => {
+      clearTimeout(timer);
+      cleanup();
+      if(started) endDrag();
+    };
+    const cleanup = () => {
+      row.removeEventListener("touchmove", move);
+      row.removeEventListener("touchend", end);
+      row.removeEventListener("touchcancel", end);
+    };
+    row.addEventListener("touchmove", move, {passive:false});
+    row.addEventListener("touchend", end);
+    row.addEventListener("touchcancel", end);
+  }, {passive:true});
+}
+
 function updateScold(){
   const now = nowMin();
-  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+  const allBlocks = [...buildMorningBlocks(), ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
     .filter(b => !b.marker);
   const overdue = allBlocks.filter(b => toMin(b.end) <= now && !state.checked[b.id]);
   const el = document.getElementById("scold");
@@ -627,14 +804,14 @@ function updateScold(){
 }
 
 function updateProgress(){
-  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+  const allBlocks = [...buildMorningBlocks(), ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
     .filter(b => !b.marker);
   const done = allBlocks.filter(b => state.checked[b.id]).length;
   document.getElementById("today-progress").textContent = "本日の消化: " + done + " / " + allBlocks.length;
 }
 
 function renderAll(){
-  renderGroup("morning-blocks", FIXED_MORNING);
+  renderGroup("morning-blocks", buildMorningBlocks());
   renderGroup("midday-blocks", FIXED_MIDDAY);
   renderGroup("evening-blocks", buildEveningBlocks(state.homeTime));
   updateScold();
@@ -655,7 +832,7 @@ function getDayData(dateStr){
 }
 function blocksForDay(data){
   const homeTime = (data && data.homeTime) || "17:00";
-  return [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(homeTime)]
+  return [...buildMorningBlocks(), ...FIXED_MIDDAY, ...buildEveningBlocks(homeTime)]
     .filter(b => !b.marker);
 }
 function dateStrOf(y, m, d){
