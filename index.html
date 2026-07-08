@@ -227,6 +227,143 @@
     cursor:pointer;
     font-family:"Hiragino Kaku Gothic ProN",sans-serif;
   }
+  .tabs{
+    display:flex;
+    gap:8px;
+    margin-top:18px;
+  }
+  .tab{
+    flex:1;
+    padding:9px 0;
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-size:13px;
+    letter-spacing:0.2em;
+    color:var(--ink-soft);
+    cursor:pointer;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .tab.active{
+    border-color:var(--stamp);
+    color:var(--stamp);
+    font-weight:bold;
+  }
+  .today-progress{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .cal-stats{
+    display:flex;
+    gap:8px;
+    margin-top:20px;
+  }
+  .cal-stat{
+    flex:1;
+    text-align:center;
+    padding:12px 4px 10px;
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+  }
+  .cal-stat .v{
+    font-size:22px;
+    color:var(--stamp);
+  }
+  .cal-stat .k{
+    font-size:10px;
+    color:var(--ink-soft);
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    letter-spacing:0.15em;
+    margin-top:4px;
+  }
+  .cal-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:22px 0 10px;
+  }
+  .cal-title{
+    font-size:16px;
+    letter-spacing:0.1em;
+  }
+  .cal-nav-btn{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:6px 14px;
+    cursor:pointer;
+    color:var(--ink-soft);
+    font-size:12px;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-dow{
+    text-align:center;
+    font-size:10px;
+    color:var(--ink-soft);
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+    padding:2px 0 6px;
+  }
+  .cal-day{
+    aspect-ratio:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    border:1px solid transparent;
+    border-radius:4px;
+    cursor:pointer;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .cal-day .num{ font-size:11px; color:var(--ink-soft); }
+  .cal-day .mark{
+    font-size:12px;
+    height:20px;
+    line-height:20px;
+    color:transparent;
+  }
+  .cal-day.done .mark{
+    color:var(--stamp);
+    border:1.5px solid var(--stamp);
+    border-radius:50%;
+    width:20px;
+    font-size:10px;
+    line-height:17px;
+    text-align:center;
+    transform:rotate(-8deg);
+    font-weight:bold;
+  }
+  .cal-day.partial .mark{ color:var(--gold); }
+  .cal-day.today{ border-color:var(--gold); background:var(--paper-card); }
+  .cal-day.future{ opacity:0.35; cursor:default; }
+  .cal-day.empty{ cursor:default; }
+  .cal-day.selected{ border-color:var(--stamp); background:rgba(196,52,40,0.06); }
+  .cal-detail{
+    margin-top:16px;
+    padding:14px 16px;
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:"Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .cal-detail-title{ font-size:14px; margin-bottom:6px; }
+  .cal-detail-status{ font-size:13px; color:var(--ink-soft); }
+  .cal-detail-status.ok{ color:var(--stamp); }
+  .cal-detail-row{ font-size:11px; color:var(--ink-soft); margin-top:8px; line-height:1.7; }
+  .cal-detail-memo{
+    font-size:12px;
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed var(--line);
+    line-height:1.7;
+  }
 </style>
 </head>
 <body>
@@ -237,6 +374,12 @@
     <div class="date" id="today-label"></div>
   </div>
 
+  <div class="tabs">
+    <button class="tab active" id="tab-today">今日</button>
+    <button class="tab" id="tab-calendar">振り返り</button>
+  </div>
+
+  <div id="view-today">
   <div class="kakugen" id="kakugen" title="タップで次の格言">
     <div class="kakugen-text" id="kakugen-text"></div>
     <div class="kakugen-source">RUCCOLO'S WORDS</div>
@@ -264,8 +407,25 @@
   <div id="evening-blocks"></div>
 
   <div class="footer">
+    <div class="today-progress" id="today-progress"></div>
     <span class="stamp-count" id="stamp-count">達成日数: -</span>
     <button class="reset-link" id="reset-today">今日のチェックをリセット</button>
+  </div>
+  </div>
+
+  <div id="view-calendar" style="display:none">
+    <div class="cal-stats">
+      <div class="cal-stat"><div class="v" id="stat-streak">-</div><div class="k">連続達成</div></div>
+      <div class="cal-stat"><div class="v" id="stat-month">-</div><div class="k">今月の達成</div></div>
+      <div class="cal-stat"><div class="v" id="stat-total">-</div><div class="k">総達成日数</div></div>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="cal-prev">◀ 前月</button>
+      <div class="cal-title" id="cal-title"></div>
+      <button class="cal-nav-btn" id="cal-next">翌月 ▶</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-detail" id="cal-detail" style="display:none"></div>
   </div>
 </div>
 
@@ -466,11 +626,167 @@ function updateScold(){
   }
 }
 
+function updateProgress(){
+  const allBlocks = [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(state.homeTime)]
+    .filter(b => !b.marker);
+  const done = allBlocks.filter(b => state.checked[b.id]).length;
+  document.getElementById("today-progress").textContent = "本日の消化: " + done + " / " + allBlocks.length;
+}
+
 function renderAll(){
   renderGroup("morning-blocks", FIXED_MORNING);
   renderGroup("midday-blocks", FIXED_MIDDAY);
   renderGroup("evening-blocks", buildEveningBlocks(state.homeTime));
   updateScold();
+  updateProgress();
+}
+
+/* ---- 振り返りカレンダー ---- */
+const calInit = new Date();
+let calYear = calInit.getFullYear();
+let calMonth = calInit.getMonth();
+let calSelected = null;
+
+function getDayData(dateStr){
+  let raw = null;
+  try{ raw = localStorage.getItem("routine:"+dateStr); }catch(e){}
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
+}
+function blocksForDay(data){
+  const homeTime = (data && data.homeTime) || "17:00";
+  return [...FIXED_MORNING, ...FIXED_MIDDAY, ...buildEveningBlocks(homeTime)]
+    .filter(b => !b.marker);
+}
+function dateStrOf(y, m, d){
+  return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+async function getCompletedDates(){
+  const raw = await store.get("completed-dates");
+  if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+  return [];
+}
+function calcStreak(set){
+  let streak = 0;
+  const d = new Date();
+  if(!set.has(todayStr())) d.setDate(d.getDate()-1);
+  while(true){
+    const s = dateStrOf(d.getFullYear(), d.getMonth(), d.getDate());
+    if(set.has(s)){ streak++; d.setDate(d.getDate()-1); } else break;
+  }
+  return streak;
+}
+
+function renderCalDetail(ds, set){
+  const el = document.getElementById("cal-detail");
+  el.style.display = "block";
+  el.innerHTML = "";
+  const data = getDayData(ds);
+  const [y, mo, d] = ds.split("-").map(Number);
+  const dow = ["日","月","火","水","木","金","土"][new Date(y, mo-1, d).getDay()];
+  const title = document.createElement("div");
+  title.className = "cal-detail-title";
+  title.textContent = mo+"月"+d+"日("+dow+")";
+  el.appendChild(title);
+  const status = document.createElement("div");
+  status.className = "cal-detail-status";
+  if(!data && !set.has(ds)){
+    status.textContent = "記録なし";
+    el.appendChild(status);
+    return;
+  }
+  const blocks = blocksForDay(data);
+  const checked = (data && data.checked) || {};
+  const done = blocks.filter(b => checked[b.id]);
+  const undone = blocks.filter(b => !checked[b.id]);
+  if(set.has(ds)){
+    status.textContent = "全ブロック達成（" + blocks.length + " / " + blocks.length + "）";
+    status.classList.add("ok");
+  } else {
+    status.textContent = "消化 " + done.length + " / " + blocks.length;
+  }
+  el.appendChild(status);
+  if(!set.has(ds) && undone.length > 0){
+    const u = document.createElement("div");
+    u.className = "cal-detail-row";
+    u.textContent = "未消化: " + undone.map(b => b.label).join(" / ");
+    el.appendChild(u);
+  }
+  const memoText = data && data.memos && data.memos.free;
+  if(memoText){
+    const m2 = document.createElement("div");
+    m2.className = "cal-detail-memo";
+    m2.textContent = "余白メモ: " + memoText;
+    el.appendChild(m2);
+  }
+}
+
+async function renderCalendar(){
+  const dates = await getCompletedDates();
+  const set = new Set(dates);
+  const now = new Date();
+  const nowPrefix = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  document.getElementById("stat-total").textContent = dates.length;
+  document.getElementById("stat-streak").textContent = calcStreak(set);
+  document.getElementById("stat-month").textContent = dates.filter(s => s.startsWith(nowPrefix)).length;
+  document.getElementById("cal-title").textContent = calYear+"年"+(calMonth+1)+"月";
+
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = "";
+  ["日","月","火","水","木","金","土"].forEach(w => {
+    const el = document.createElement("div");
+    el.className = "cal-dow";
+    el.textContent = w;
+    grid.appendChild(el);
+  });
+  const startDow = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = todayStr();
+  for(let i = 0; i < startDow; i++){
+    const el = document.createElement("div");
+    el.className = "cal-day empty";
+    grid.appendChild(el);
+  }
+  for(let d = 1; d <= daysInMonth; d++){
+    const ds = dateStrOf(calYear, calMonth, d);
+    const data = getDayData(ds);
+    const hasPartial = data && data.checked && Object.values(data.checked).some(v => v);
+    const el = document.createElement("div");
+    let cls = "cal-day";
+    if(set.has(ds)) cls += " done";
+    else if(hasPartial) cls += " partial";
+    if(ds === today) cls += " today";
+    if(ds > today) cls += " future";
+    if(calSelected === ds) cls += " selected";
+    el.className = cls;
+    const num = document.createElement("div");
+    num.className = "num";
+    num.textContent = d;
+    el.appendChild(num);
+    const mark = document.createElement("div");
+    mark.className = "mark";
+    mark.textContent = set.has(ds) ? "済" : (hasPartial ? "・" : "");
+    el.appendChild(mark);
+    if(ds <= today){
+      el.addEventListener("click", () => {
+        calSelected = ds;
+        renderCalendar();
+      });
+    }
+    grid.appendChild(el);
+  }
+  if(calSelected) renderCalDetail(calSelected, set);
+}
+
+function switchTab(tab){
+  document.getElementById("view-today").style.display = tab === "today" ? "" : "none";
+  document.getElementById("view-calendar").style.display = tab === "calendar" ? "" : "none";
+  document.getElementById("tab-today").classList.toggle("active", tab === "today");
+  document.getElementById("tab-calendar").classList.toggle("active", tab === "calendar");
+  if(tab === "calendar"){
+    if(!calSelected) calSelected = todayStr();
+    renderCalendar();
+  }
 }
 
 async function init(){
@@ -497,6 +813,19 @@ async function init(){
     state.checked = {};
     await saveState();
     renderAll();
+  });
+
+  document.getElementById("tab-today").addEventListener("click", () => switchTab("today"));
+  document.getElementById("tab-calendar").addEventListener("click", () => switchTab("calendar"));
+  document.getElementById("cal-prev").addEventListener("click", () => {
+    calMonth--;
+    if(calMonth < 0){ calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById("cal-next").addEventListener("click", () => {
+    calMonth++;
+    if(calMonth > 11){ calMonth = 0; calYear++; }
+    renderCalendar();
   });
 
   renderAll();
